@@ -1,0 +1,53 @@
+pipeline {
+  agent { label 'slavenode1' }
+
+  tools {
+    maven "maven_3.6.3"
+  }
+
+  environment {
+    DOCKERHUB_CREDENTIALS=credentials('dockerloginid')
+  }
+
+  stages {
+    stage('SCM Checkout') {
+      steps {
+        git branch: 'master', url: 'https://github.com/mrshaikkk/Accuknox-Assessment.git'
+      }
+    }
+    stage("Docker build") {
+      steps {
+        sh 'docker version'
+        sh "docker build -t mrshaik786/wisecow-app:${BUILD_NUMBER} ."
+        sh 'docker image list'
+        sh "docker tag mrshaik786/wisecow-app:${BUILD_NUMBER} mrshaik786/wisecow-app:latest"
+      }
+    }
+    stage('Login2DockerHub') {
+      steps {
+        sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+      }
+    }
+    stage('Push2DockerHub') {
+      steps {
+        sh "docker push mrshaik786/wisecow-app:latest"
+      }
+    }
+    stage('Deploy to Kubernetes Dev Environment') {
+      steps {
+        script {
+          // Enable TLS verification for sshPublisher
+          def config = sshPublisherDesc(configName: 'Kubernetes', transfers: [
+              sshTransfer(cleanRemote: false, excludes: '', execCommand: 'kubectl apply -f KubernetesDeploy.yaml',
+                         execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false,
+                         patternSeparator: '[, ]+', remoteDirectory: '.', remoteDirectorySDF: false, removePrefix: '',
+                         sourceFiles: '*.yaml')
+          ], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)
+          config.options.setTlsVerify(true) // Enable TLS verification
+
+          sshPublisher(publishers: [config])
+        }
+      }
+    }
+  }
+}
