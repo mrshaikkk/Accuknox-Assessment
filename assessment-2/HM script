@@ -1,0 +1,40 @@
+import psutil
+import smtplib
+from email.mime.text import MIMEText
+
+def check_system_health():
+    # CPU usage
+    cpu_percent = psutil.cpu_percent(interval=1)
+    if cpu_percent > 80:
+        send_alert("CPU usage is high: {}".format(cpu_percent))
+
+    # Memory usage
+    memory = psutil.virtual_memory()
+    memory_percent = (memory.total - memory.available) / memory.total * 100
+    if memory_percent > 80:
+        send_alert("Memory usage is high: {}".format(memory_percent))
+
+    # Disk usage
+    disk_usage = psutil.disk_usage('/')
+    disk_percent = disk_usage.percent
+    if disk_percent > 80:
+        send_alert("Disk usage is high: {}".format(disk_percent))
+
+def send_alert(message):
+    
+    sender = "shaikthohid313@gmail.com"
+    receiver = "shaikthohid313@gmail.com"
+    password = "password*"    #write the password while using the script
+
+    msg = MIMEText(message)
+    msg['Subject'] = "System Health Alert"
+    msg['From'] = sender
+    msg['To'] = receiver
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as s:
+        s.starttls()
+        s.login(sender, password)
+        s.send_message(msg)
+
+if __name__ == "__main__":
+    check_system_health()
